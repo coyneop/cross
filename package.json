@@ -4,12 +4,14 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.16",
     "@types/bun": "latest",
-    "bun-plugin-dts": "^0.4.0",
-    "typescript": "^6.0.3",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "bun-plugin-dts": "^0.4.0",
+    "bun-plugin-svelte": "^0.0.6",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "svelte": "^5.56.3",
+    "typescript": "^6.0.3"
   },
   "exports": {
     ".": {
@@ -19,13 +21,21 @@
     "./react": {
       "types": "./dist/react/index.d.ts",
       "import": "./dist/react/index.js"
+    },
+    "./svelte": {
+      "types": "./dist/svelte/Crossword.svelte.d.ts",
+      "svelte": "./dist/svelte/Crossword.svelte"
     }
   },
   "peerDependencies": {
-    "react": ">=16.8.0"
+    "react": ">=16.8.0",
+    "svelte": "^5.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
+      "optional": true
+    },
+    "svelte": {
       "optional": true
     }
   },
