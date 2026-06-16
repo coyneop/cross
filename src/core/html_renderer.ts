@@ -46,6 +46,8 @@ export class HtmlRenderer implements Renderer {
 
     this.grid.style.borderRight = `1px solid ${theme.border}`;
     this.grid.style.borderBottom = `1px solid ${theme.border}`;
+    this.grid.innerHTML = "";
+    this.cells = [];
 
     let gCount = 0;
     for (const [i, cell] of state.puzzle.cells.entries()) {

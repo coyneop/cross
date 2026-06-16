@@ -79,6 +79,16 @@ export class Engine {
     this.renderer.paint(this.state);
   }
 
+  destroy = () => {
+    this.resizeObserver.disconnect();
+  };
+
+  update = (state: PuzzleState) => {
+    this.state = state;
+    this.buildNumbers();
+    this.renderer.paint(state);
+  };
+
   onResize = (_: ResizeObserverEntry[]) => {
     if (this.frameId !== null) return;
     this.frameId = requestAnimationFrame(() => {

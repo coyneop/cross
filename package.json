@@ -1,24 +1,40 @@
 {
-	"name": "cross",
-	"version": "0.0.1",
-	"devDependencies": {
-		"@biomejs/biome": "2.4.16",
-		"@types/bun": "latest",
-		"bun-plugin-dts": "^0.4.0",
-		"typescript": "^6.0.3"
-	},
-	"exports": {
-		".": {
-			"types": "./dist/core/index.d.ts",
-			"import": "./dist/core/index.js"
-		}
-	},
-	"files": [
-		"dist"
-	],
-	"scripts": {
-		"build": "rm -rf dist && bun run build.ts"
-	},
-	"sideEffects": false,
-	"type": "module"
+  "name": "cross",
+  "version": "0.0.1",
+  "devDependencies": {
+    "@biomejs/biome": "2.4.16",
+    "@types/bun": "latest",
+    "bun-plugin-dts": "^0.4.0",
+    "typescript": "^6.0.3",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react/index.js"
+    }
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && bun run build.ts"
+  },
+  "sideEffects": false,
+  "type": "module"
 }
