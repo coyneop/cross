@@ -23,7 +23,7 @@
     });
 
     $effect(() => {
-        engine?.update(state);
+        engine?.setState(state);
     });
 </script>
 

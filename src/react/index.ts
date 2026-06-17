@@ -1,5 +1,5 @@
 import { createElement, useEffect, useRef } from "react";
-import { Engine, RenderType, type PuzzleState } from "../core";
+import { Engine, type PuzzleState, RenderType } from "../core";
 
 export interface CrosswordProps {
   state: PuzzleState;
@@ -21,12 +21,13 @@ export function Crossword({
   useEffect(() => {
     if (!host.current) return;
     engine.current = new Engine(host.current, state, renderer);
+    engine.current.on("select", (e) => console.log(e));
     return () => engine.current?.destroy();
   }, [state, renderer]);
 
   // push new state on every change without rebuilding the engine
   useEffect(() => {
-    engine.current?.update(state);
+    engine.current?.setState(state);
   }, [state]);
 
   return createElement("div", {

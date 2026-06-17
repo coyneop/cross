@@ -1,6 +1,7 @@
 import type { PuzzleState } from "./engine.ts";
 import type { Renderer } from "./renderer.ts";
 import { DEFAULT_LIGHT_THEME, type Theme } from "./theme.ts";
+import { el } from "./utils.ts";
 
 export class CanvasRenderer implements Renderer {
   buffer: OffscreenCanvas;
@@ -9,13 +10,13 @@ export class CanvasRenderer implements Renderer {
   output: ImageBitmapRenderingContext;
   canvas: HTMLCanvasElement;
   pixelRatio: number;
+  state: PuzzleState | null;
 
   constructor(element: HTMLElement, pixelRatio: number) {
     this.element = element;
-    this.canvas = document.createElement("canvas");
-    this.canvas.style.display = "block";
-    this.canvas.style.width = "100%";
-    this.canvas.style.height = "100%";
+    this.canvas = el("canvas", {
+      style: { display: "block", width: "100%", height: "100%" },
+    });
     this.element.appendChild(this.canvas);
     this.buffer = new OffscreenCanvas(this.canvas.width, this.canvas.height);
     const renderer = this.canvas.getContext("bitmaprenderer");
@@ -26,7 +27,34 @@ export class CanvasRenderer implements Renderer {
     this.ctx = ctx;
     this.output = renderer;
     this.pixelRatio = pixelRatio;
+    this.state = null;
   }
+
+  hitTest(e: PointerEvent) {
+    const w = this.buffer.width;
+    const h = this.buffer.height;
+    const cols = this.state?.puzzle.width || 1;
+    const rows = this.state?.puzzle.height || 1;
+    // match HTML renderer: border = min(1cqw, 1cqh) = 1% of the buffer's smaller side
+    const border = Math.min(w, h) / 100;
+
+    const cellSize = Math.min((w - 2 * border) / cols, (h - 2 * border) / rows);
+
+    const gridW = cols * cellSize;
+    const gridH = rows * cellSize;
+    const ox = (w - gridW) / 2;
+    const oy = (h - gridH) / 2;
+
+    const rect = this.canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (w / rect.width);
+    const y = (e.clientY - rect.top) * (h / rect.height);
+    const col = Math.floor((x - ox) / cellSize);
+    const row = Math.floor((y - oy) / cellSize);
+
+    if (col < 0 || row < 0 || col >= cols || row >= rows) return null;
+    return row * cols + col;
+  }
+
   resize() {
     const w = Math.max(1, this.canvas.clientWidth * this.pixelRatio);
     const h = Math.max(1, this.canvas.clientHeight * this.pixelRatio);
@@ -35,13 +63,15 @@ export class CanvasRenderer implements Renderer {
     this.buffer.height = this.canvas.height = h;
   }
   paint(state: PuzzleState) {
+    this.state = state; // persist for hitTest (reads this.state for cols/rows)
     const w = this.buffer.width;
     const h = this.buffer.height;
     const cols = state.puzzle.width;
     const rows = state.puzzle.height;
 
     const theme = state.puzzle.theme || DEFAULT_LIGHT_THEME;
-    const border = theme.borderWidth * this.pixelRatio;
+    // match HTML renderer: border = min(1cqw, 1cqh) = 1% of the buffer's smaller side
+    const border = Math.min(w, h) / 100;
     const cellSize = Math.min((w - 2 * border) / cols, (h - 2 * border) / rows);
     const gridW = cols * cellSize;
     const gridH = rows * cellSize;
@@ -77,7 +107,7 @@ export class CanvasRenderer implements Renderer {
     }
 
     // draw numbers
-    const numberPad = cellSize * 0.08;
+    const numberPad = cellSize * 0.05;
     const numberSize = Math.max(8, Math.round(cellSize * 0.3));
     this.ctx.fillStyle = theme.textSecondary;
     this.ctx.font = `${numberSize}px Arial`;
@@ -94,8 +124,9 @@ export class CanvasRenderer implements Renderer {
       );
     }
 
-    // draw letters
-    const letterSize = Math.max(8, cellSize * 0.6);
+    // draw letters — match HTML: min(100cqw, 100cqh) / cols * 0.6
+    // (grid side over columns, NOT the border-subtracted cellSize)
+    const letterSize = (Math.min(w, h) / cols) * 0.6;
     this.ctx.fillStyle = theme.text;
     this.ctx.font = `${letterSize}px Arial`;
     this.ctx.textAlign = "center";
@@ -139,5 +170,7 @@ export class CanvasRenderer implements Renderer {
     this.ctx.stroke();
   }
 
-  destroy() {}
+  destroy() {
+    this.canvas.remove();
+  }
 }

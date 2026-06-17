@@ -1,6 +1,7 @@
 import type { PuzzleState } from "./engine";
 import type { Renderer } from "./renderer";
 import { DEFAULT_LIGHT_THEME } from "./theme";
+import { el } from "./utils";
 
 export class HtmlRenderer implements Renderer {
   element: HTMLElement;
@@ -30,6 +31,7 @@ export class HtmlRenderer implements Renderer {
         aspectRatio: "1 / 1",
         boxSizing: "border-box",
         fontFamily: "arial, sans-serif",
+        userSelect: "none",
       },
     });
     this.cells = [];
@@ -37,15 +39,23 @@ export class HtmlRenderer implements Renderer {
   }
 
   resize() {}
-  destroy() {}
+  destroy() {
+    this.container.remove();
+  }
+
+  hitTest(e: PointerEvent) {
+    const target = e.target as Element | null;
+    const cell = target?.closest<HTMLElement>("[data-position]");
+    if (!cell) return null;
+    return Number(cell.dataset.position);
+  }
 
   paint(state: PuzzleState) {
     const theme = state.puzzle.theme || DEFAULT_LIGHT_THEME;
 
     const gridFragment = document.createDocumentFragment();
 
-    this.grid.style.borderRight = `1px solid ${theme.border}`;
-    this.grid.style.borderBottom = `1px solid ${theme.border}`;
+    this.grid.style.border = `min(1cqw, 1cqh) solid ${theme.border}`;
     this.grid.innerHTML = "";
     this.cells = [];
 
@@ -53,8 +63,9 @@ export class HtmlRenderer implements Renderer {
     for (const [i, cell] of state.puzzle.cells.entries()) {
       const cellStyle: Partial<CSSStyleDeclaration> = {
         backgroundColor: theme.background,
-        borderTop: `1px solid ${theme.border}`,
-        borderLeft: `1px solid ${theme.border}`,
+        borderTop: i < state.puzzle.width ? undefined : `1px solid`,
+        borderLeft: i % state.puzzle.width === 0 ? undefined : `1px solid`,
+        borderColor: theme.borderSecondary,
         boxSizing: "border-box",
         minWidth: "0",
         minHeight: "0",
@@ -63,6 +74,7 @@ export class HtmlRenderer implements Renderer {
         justifyContent: "flex-end",
         flexDirection: "column",
         alignItems: "center",
+        color: theme.text,
       };
       if (cell.kind === "block") {
         const cellElem = el("div", {
@@ -71,6 +83,7 @@ export class HtmlRenderer implements Renderer {
             ...cellStyle,
             backgroundColor: theme.border,
           },
+          dataset: { position: i.toString() },
         });
         this.cells.push(cellElem);
         this.grid.append(cellElem);
@@ -80,6 +93,7 @@ export class HtmlRenderer implements Renderer {
           {
             className: "cross-cell",
             style: cellStyle,
+            dataset: { position: i.toString() },
           },
           el(
             "span",
@@ -90,6 +104,7 @@ export class HtmlRenderer implements Renderer {
                 position: "absolute",
                 top: "0",
                 left: "5%",
+                color: theme.textSecondary,
               },
             },
             gCount.toString(),
@@ -112,6 +127,7 @@ export class HtmlRenderer implements Renderer {
           {
             className: "cross-cell",
             style: cellStyle,
+            dataset: { position: i.toString() },
           },
           el(
             "span",
@@ -130,25 +146,4 @@ export class HtmlRenderer implements Renderer {
     gridFragment.append(this.grid);
     this.container.append(gridFragment);
   }
-}
-
-type ElProps<K extends keyof HTMLElementTagNameMap> = Partial<
-  Omit<HTMLElementTagNameMap[K], "style">
-> & {
-  style?: Partial<CSSStyleDeclaration>;
-  dataset?: Record<string, string>;
-};
-
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  props: ElProps<K> = {},
-  ...children: (Node | string)[]
-): HTMLElementTagNameMap[K] {
-  const { style, dataset, ...rest } = props;
-  const node = document.createElement(tag);
-  Object.assign(node, rest);
-  if (style) Object.assign(node.style, style);
-  if (dataset) Object.assign(node.dataset, dataset);
-  node.append(...children);
-  return node;
 }

@@ -44,10 +44,37 @@ const DEFAULT_STATE = {
   },
 };
 
-export class Engine {
+type Modifiers = { shift: boolean; ctrl: boolean; alt: boolean; meta: boolean };
+
+type EngineEvents = {
+  select: { position: number; row: number; col: number; modifiers: Modifiers };
+  navigate: { direction: "up" | "down" | "left" | "right" };
+  input: { key: string };
+  erase: { backward: boolean };
+};
+
+type Handler<T> = (payload: T) => void;
+
+class Emitter<E extends Record<string, unknown>> {
+  #handlers: { [K in keyof E]?: Set<Handler<E[K]>> } = {};
+
+  on<K extends keyof E>(type: K, cb: Handler<E[K]>): () => void {
+    this.#handlers[type] ??= new Set();
+    this.#handlers[type]?.add(cb);
+    return () => this.#handlers[type]?.delete(cb); // unsubscribe
+  }
+
+  protected emit<K extends keyof E>(type: K, payload: E[K]): void {
+    this.#handlers[type]?.forEach((cb) => {
+      cb(payload);
+    });
+  }
+}
+
+export class Engine extends Emitter<EngineEvents> {
   element: HTMLElement;
   resizeObserver: ResizeObserver;
-  renderer: Renderer;
+  renderer!: Renderer;
   state: PuzzleState;
   frameId: number | null = null;
 
@@ -56,37 +83,53 @@ export class Engine {
     state?: PuzzleState,
     type: RenderType = RenderType.Html,
   ) {
+    super();
     this.element = element;
-    switch (type) {
-      case RenderType.Canvas:
-        this.renderer = new CanvasRenderer(
-          this.element,
-          window.devicePixelRatio,
-        );
-        break;
-      case RenderType.Html:
-        this.renderer = new HtmlRenderer(this.element);
-        break;
-      case RenderType.Svg:
-        this.renderer = new HtmlRenderer(this.element);
-    }
+    this.renderer = this.buildRenderer(type);
     this.state = state || DEFAULT_STATE;
     this.buildNumbers();
+
+    if (this.element.tabIndex < 0) this.element.tabIndex = 0; // make host focusable
+    this.element.addEventListener("pointerdown", this.onPointerDown);
+    this.element.addEventListener("keydown", this.onKeyDown);
 
     // setup resize event handling
     this.resizeObserver = new ResizeObserver(this.onResize);
     this.resizeObserver.observe(this.element);
-    this.renderer.paint(this.state);
+    this.renderer.resize(); // size the buffer to the container before the first paint
+    this.setState(this.state);
   }
 
   destroy = () => {
+    if (this.frameId !== null) cancelAnimationFrame(this.frameId);
     this.resizeObserver.disconnect();
+    this.element.removeEventListener("pointerdown", this.onPointerDown);
+    this.element.removeEventListener("keydown", this.onKeyDown);
+    this.renderer.destroy();
   };
 
-  update = (state: PuzzleState) => {
+  setState = (state: PuzzleState) => {
     this.state = state;
     this.buildNumbers();
     this.renderer.paint(state);
+  };
+
+  setRenderer = (type: RenderType) => {
+    if (this.renderer) this.renderer.destroy();
+    this.renderer = this.buildRenderer(type);
+    this.renderer.resize();
+    this.renderer.paint(this.state);
+  };
+
+  private buildRenderer = (type: RenderType): Renderer => {
+    switch (type) {
+      case RenderType.Canvas:
+        return new CanvasRenderer(this.element, window.devicePixelRatio);
+      case RenderType.Html:
+        return new HtmlRenderer(this.element);
+      case RenderType.Svg:
+        return new HtmlRenderer(this.element);
+    }
   };
 
   onResize = (_: ResizeObserverEntry[]) => {
@@ -94,8 +137,53 @@ export class Engine {
     this.frameId = requestAnimationFrame(() => {
       this.frameId = null;
       this.renderer.resize();
-      //this.renderer.paint(this.state);
+      this.renderer.paint(this.state);
     });
+  };
+
+  private readModifiers = (e: MouseEvent | KeyboardEvent): Modifiers => ({
+    shift: e.shiftKey,
+    ctrl: e.ctrlKey,
+    alt: e.altKey,
+    meta: e.metaKey,
+  });
+
+  onPointerDown = (e: PointerEvent) => {
+    const position = this.renderer.hitTest(e);
+    if (position == null) return; // clicked the margin/border
+    const { width } = this.state.puzzle;
+    this.emit("select", {
+      position,
+      row: Math.floor(position / width),
+      col: position % width,
+      modifiers: this.readModifiers(e),
+    });
+  };
+
+  onKeyDown = (e: KeyboardEvent) => {
+    switch (e.key) {
+      case "ArrowUp":
+        e.preventDefault();
+        return this.emit("navigate", { direction: "up" });
+      case "ArrowDown":
+        e.preventDefault();
+        return this.emit("navigate", { direction: "down" });
+      case "ArrowLeft":
+        e.preventDefault();
+        return this.emit("navigate", { direction: "left" });
+      case "ArrowRight":
+        e.preventDefault();
+        return this.emit("navigate", { direction: "right" });
+      case "Backspace":
+        e.preventDefault();
+        return this.emit("erase", { backward: true });
+      case "Delete":
+        e.preventDefault();
+        return this.emit("erase", { backward: false });
+    }
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+      this.emit("input", { key: e.key });
+    }
   };
 
   buildNumbers = () => {
