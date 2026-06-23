@@ -1,4 +1,4 @@
-import type { PuzzleState } from "./engine";
+import type { Puzzle } from "./engine";
 import type { Renderer } from "./renderer";
 import { DEFAULT_LIGHT_THEME } from "./theme";
 import { el } from "./utils";
@@ -50,8 +50,8 @@ export class HtmlRenderer implements Renderer {
     return Number(cell.dataset.position);
   }
 
-  paint(state: PuzzleState) {
-    const theme = state.puzzle.theme || DEFAULT_LIGHT_THEME;
+  paint(state: Puzzle) {
+    const theme = state.theme || DEFAULT_LIGHT_THEME;
 
     const gridFragment = document.createDocumentFragment();
 
@@ -60,11 +60,11 @@ export class HtmlRenderer implements Renderer {
     this.cells = [];
 
     let gCount = 0;
-    for (const [i, cell] of state.puzzle.cells.entries()) {
+    for (const [i, cell] of state.cells.entries()) {
       const cellStyle: Partial<CSSStyleDeclaration> = {
         backgroundColor: theme.background,
-        borderTop: i < state.puzzle.width ? undefined : `1px solid`,
-        borderLeft: i % state.puzzle.width === 0 ? undefined : `1px solid`,
+        borderTop: i < state.width ? undefined : `1px solid`,
+        borderLeft: i % state.width === 0 ? undefined : `1px solid`,
         borderColor: theme.borderSecondary,
         boxSizing: "border-box",
         minWidth: "0",
@@ -76,23 +76,35 @@ export class HtmlRenderer implements Renderer {
         alignItems: "center",
         color: theme.text,
       };
+      const isHighlighted = state.highlighted?.includes(i) ?? false;
+      const isSelected = i === state.selected;
+
+      const stateStyle: Partial<CSSStyleDeclaration> = {
+        ...(isHighlighted
+          ? { backgroundColor: theme.highlight, color: theme.highlightText }
+          : {}),
+        ...(isSelected
+          ? { backgroundColor: theme.select, color: theme.selectText }
+          : {}),
+      };
       if (cell.kind === "block") {
         const cellElem = el("div", {
           className: "cross-cell cross-block",
           style: {
             ...cellStyle,
             backgroundColor: theme.border,
+            ...stateStyle,
           },
           dataset: { position: i.toString() },
         });
         this.cells.push(cellElem);
         this.grid.append(cellElem);
-      } else if (state.puzzle.gridIndex[gCount] === i) {
+      } else if (state.gridIndex[gCount] === i) {
         const cellElem = el(
           "div",
           {
             className: "cross-cell",
-            style: cellStyle,
+            style: { ...cellStyle, ...stateStyle },
             dataset: { position: i.toString() },
           },
           el(
@@ -126,7 +138,7 @@ export class HtmlRenderer implements Renderer {
           "div",
           {
             className: "cross-cell",
-            style: cellStyle,
+            style: { ...cellStyle, ...stateStyle },
             dataset: { position: i.toString() },
           },
           el(

@@ -17,8 +17,8 @@ const cells: Cell[] = Array.from({ length: width * height }, (_, i) =>
 const puzzle: Puzzle = { width, height, cells, gridIndex: [] };
 const elem = document.getElementById("grid") as HTMLDivElement;
 
-const engine = new Engine(elem, { puzzle });
-
+const engine = new Engine(elem, puzzle);
+engine.on("select", console.log);
 const renderers = [
   { label: "HTML", type: RenderType.Html },
   { label: "Canvas", type: RenderType.Canvas },

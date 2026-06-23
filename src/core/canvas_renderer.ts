@@ -1,4 +1,4 @@
-import type { PuzzleState } from "./engine.ts";
+import type { Puzzle } from "./engine.ts";
 import type { Renderer } from "./renderer.ts";
 import { DEFAULT_LIGHT_THEME, type Theme } from "./theme.ts";
 import { el } from "./utils.ts";
@@ -10,7 +10,7 @@ export class CanvasRenderer implements Renderer {
   output: ImageBitmapRenderingContext;
   canvas: HTMLCanvasElement;
   pixelRatio: number;
-  state: PuzzleState | null;
+  state: Puzzle | null;
 
   constructor(element: HTMLElement, pixelRatio: number) {
     this.element = element;
@@ -33,8 +33,8 @@ export class CanvasRenderer implements Renderer {
   hitTest(e: PointerEvent) {
     const w = this.buffer.width;
     const h = this.buffer.height;
-    const cols = this.state?.puzzle.width || 1;
-    const rows = this.state?.puzzle.height || 1;
+    const cols = this.state?.width || 1;
+    const rows = this.state?.height || 1;
     // match HTML renderer: border = min(1cqw, 1cqh) = 1% of the buffer's smaller side
     const border = Math.min(w, h) / 100;
 
@@ -62,14 +62,14 @@ export class CanvasRenderer implements Renderer {
     this.buffer.width = this.canvas.width = w;
     this.buffer.height = this.canvas.height = h;
   }
-  paint(state: PuzzleState) {
+  paint(state: Puzzle) {
     this.state = state; // persist for hitTest (reads this.state for cols/rows)
     const w = this.buffer.width;
     const h = this.buffer.height;
-    const cols = state.puzzle.width;
-    const rows = state.puzzle.height;
+    const cols = state.width;
+    const rows = state.height;
 
-    const theme = state.puzzle.theme || DEFAULT_LIGHT_THEME;
+    const theme = state.theme || DEFAULT_LIGHT_THEME;
     // match HTML renderer: border = min(1cqw, 1cqh) = 1% of the buffer's smaller side
     const border = Math.min(w, h) / 100;
     const cellSize = Math.min((w - 2 * border) / cols, (h - 2 * border) / rows);
@@ -91,9 +91,9 @@ export class CanvasRenderer implements Renderer {
       gridH + border,
     );
 
-    for (const [i, cell] of state.puzzle.cells.entries()) {
-      const x = i % state.puzzle.width;
-      const y = Math.floor(i / state.puzzle.width);
+    for (const [i, cell] of state.cells.entries()) {
+      const x = i % state.width;
+      const y = Math.floor(i / state.width);
 
       if (cell.kind === "block") {
         this.ctx.fillStyle = theme.border;
@@ -113,9 +113,9 @@ export class CanvasRenderer implements Renderer {
     this.ctx.font = `${numberSize}px Arial`;
     this.ctx.textAlign = "left";
     this.ctx.textBaseline = "top";
-    for (const [num, pos] of state.puzzle.gridIndex.entries()) {
-      const x = pos % state.puzzle.width;
-      const y = Math.floor(pos / state.puzzle.width);
+    for (const [num, pos] of state.gridIndex.entries()) {
+      const x = pos % state.width;
+      const y = Math.floor(pos / state.width);
       // Clue number
       this.ctx.fillText(
         num.toString(),
@@ -131,10 +131,10 @@ export class CanvasRenderer implements Renderer {
     this.ctx.font = `${letterSize}px Arial`;
     this.ctx.textAlign = "center";
     this.ctx.textBaseline = "bottom";
-    for (const [i, cell] of state.puzzle.cells.entries()) {
+    for (const [i, cell] of state.cells.entries()) {
       if (cell.kind === "block" || !cell.value) continue;
-      const x = i % state.puzzle.width;
-      const y = Math.floor(i / state.puzzle.width);
+      const x = i % state.width;
+      const y = Math.floor(i / state.width);
       const cx = ox + x * cellSize + cellSize / 2;
       const cy = oy + y * cellSize + cellSize;
       this.ctx.fillText(cell.value, cx, cy);

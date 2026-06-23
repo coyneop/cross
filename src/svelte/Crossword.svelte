@@ -1,13 +1,13 @@
 <script lang="ts">
     import { untrack } from "svelte";
-    import { Engine, type PuzzleState, RenderType } from "../core";
+    import { Engine, type Puzzle, RenderType } from "../core";
 
     let {
         state,
         renderer = RenderType.Html,
         // biome-ignore lint/correctness/noUnusedVariables: used in template
         class: className = "",
-    }: { state: PuzzleState; renderer?: RenderType; class?: string } = $props();
+    }: { state: Puzzle; renderer?: RenderType; class?: string } = $props();
 
     let host: HTMLDivElement;
     let engine: Engine | undefined;

@@ -1,8 +1,8 @@
 import { createElement, useEffect, useRef } from "react";
-import { Engine, type PuzzleState, RenderType } from "../core";
+import { Engine, type Puzzle, RenderType } from "../core";
 
 export interface CrosswordProps {
-  state: PuzzleState;
+  state: Puzzle;
   renderer?: RenderType;
   className?: string;
   style?: React.CSSProperties;

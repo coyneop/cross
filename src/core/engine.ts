@@ -21,13 +21,20 @@ export type Puzzle = {
   cells: Cell[];
   gridIndex: number[];
   selected?: number;
+  selectedDirection?: Direction;
   highlighted?: number[];
   theme?: Theme;
+  mode?: PuzzleMode;
 };
 
-export type PuzzleState = {
-  puzzle: Puzzle;
-};
+export enum Direction {
+  Across = "across",
+  Down = "down",
+}
+export enum PuzzleMode {
+  Solve = "solve",
+  Build = "build",
+}
 
 export enum RenderType {
   Html,
@@ -36,18 +43,16 @@ export enum RenderType {
 }
 
 const DEFAULT_STATE = {
-  puzzle: {
-    height: 15,
-    width: 15,
-    cells: [],
-    gridIndex: [],
-  },
+  height: 15,
+  width: 15,
+  cells: [],
+  gridIndex: [],
+  selectedDirection: Direction.Across,
+  mode: PuzzleMode.Solve,
 };
 
-type Modifiers = { shift: boolean; ctrl: boolean; alt: boolean; meta: boolean };
-
 type EngineEvents = {
-  select: { position: number; row: number; col: number; modifiers: Modifiers };
+  select: { position: number; row: number; col: number };
   navigate: { direction: "up" | "down" | "left" | "right" };
   input: { key: string };
   erase: { backward: boolean };
@@ -75,18 +80,21 @@ export class Engine extends Emitter<EngineEvents> {
   element: HTMLElement;
   resizeObserver: ResizeObserver;
   renderer!: Renderer;
-  state: PuzzleState;
+  state: Puzzle;
   frameId: number | null = null;
 
   constructor(
     element: HTMLElement,
-    state?: PuzzleState,
+    state?: Puzzle,
     type: RenderType = RenderType.Html,
   ) {
     super();
     this.element = element;
     this.renderer = this.buildRenderer(type);
-    this.state = state || DEFAULT_STATE;
+    this.state = { ...DEFAULT_STATE, ...state };
+    console.log(state);
+    console.log(DEFAULT_STATE);
+    console.log("intitial state", this.state);
     this.buildNumbers();
 
     if (this.element.tabIndex < 0) this.element.tabIndex = 0; // make host focusable
@@ -108,7 +116,7 @@ export class Engine extends Emitter<EngineEvents> {
     this.renderer.destroy();
   };
 
-  setState = (state: PuzzleState) => {
+  setState = (state: Puzzle) => {
     this.state = state;
     this.buildNumbers();
     this.renderer.paint(state);
@@ -141,39 +149,81 @@ export class Engine extends Emitter<EngineEvents> {
     });
   };
 
-  private readModifiers = (e: MouseEvent | KeyboardEvent): Modifiers => ({
-    shift: e.shiftKey,
-    ctrl: e.ctrlKey,
-    alt: e.altKey,
-    meta: e.metaKey,
-  });
-
   onPointerDown = (e: PointerEvent) => {
     const position = this.renderer.hitTest(e);
-    if (position == null) return; // clicked the margin/border
-    const { width } = this.state.puzzle;
-    this.emit("select", {
+    if (position == null) return;
+    this.onSelect(position);
+  };
+
+  onSelect = (position: number) => {
+    const { width, selectedDirection, selected } = this.state;
+    const direction: Direction | undefined =
+      selected === position
+        ? selectedDirection === Direction.Across
+          ? Direction.Down
+          : Direction.Across
+        : selectedDirection;
+    const ev = cancelable({
       position,
       row: Math.floor(position / width),
       col: position % width,
-      modifiers: this.readModifiers(e),
+      direction: direction,
     });
+    this.emit("select", ev);
+    if (!ev.defaultPrevented) this.applySelection(position, direction);
+  };
+
+  applySelection = (position: number, direction?: Direction) => {
+    this.state.selected = position;
+    this.state.selectedDirection = direction;
+    this.buildHighlights();
+    this.renderer.paint(this.state);
   };
 
   onKeyDown = (e: KeyboardEvent) => {
     switch (e.key) {
       case "ArrowUp":
         e.preventDefault();
-        return this.emit("navigate", { direction: "up" });
+        if (typeof this.state.selected === "undefined") return;
+        if (this.state.selectedDirection === Direction.Across) {
+          return this.onSelect(this.state.selected);
+        } else if (this.state.selected - this.state.width >= 0) {
+          return this.onSelect(this.state.selected - this.state.width);
+        }
+        return;
       case "ArrowDown":
         e.preventDefault();
-        return this.emit("navigate", { direction: "down" });
+        if (typeof this.state.selected === "undefined") return;
+        if (this.state.selectedDirection === Direction.Across) {
+          return this.onSelect(this.state.selected);
+        } else if (
+          this.state.selected + this.state.width <=
+          this.state.width * this.state.height
+        ) {
+          return this.onSelect(this.state.selected + this.state.width);
+        }
+        return;
       case "ArrowLeft":
         e.preventDefault();
-        return this.emit("navigate", { direction: "left" });
+        if (typeof this.state.selected === "undefined") return;
+        if (this.state.selectedDirection === Direction.Down) {
+          this.onSelect(this.state.selected);
+        } else if (this.state.selected % this.state.width !== 0) {
+          this.onSelect(this.state.selected - 1);
+        }
+        return;
       case "ArrowRight":
         e.preventDefault();
-        return this.emit("navigate", { direction: "right" });
+        if (typeof this.state.selected === "undefined") return;
+        if (this.state.selectedDirection === Direction.Down) {
+          this.onSelect(this.state.selected);
+        } else if (
+          this.state.selected % this.state.width !==
+          this.state.width - 1
+        ) {
+          this.onSelect(this.state.selected + 1);
+        }
+        return;
       case "Backspace":
         e.preventDefault();
         return this.emit("erase", { backward: true });
@@ -189,45 +239,122 @@ export class Engine extends Emitter<EngineEvents> {
   buildNumbers = () => {
     const blockAbove = (position: number): boolean => {
       return (
-        position - this.state.puzzle.width < 0 ||
-        this.state.puzzle.cells[position - this.state.puzzle.width]?.kind ===
-          "block"
+        position - this.state.width < 0 ||
+        this.state.cells[position - this.state.width]?.kind === "block"
       );
     };
 
     const blockBehind = (position: number): boolean => {
       return (
-        position % this.state.puzzle.width === 0 ||
-        this.state.puzzle.cells[position - 1]?.kind === "block"
+        position % this.state.width === 0 ||
+        this.state.cells[position - 1]?.kind === "block"
       );
     };
 
-    this.state.puzzle.gridIndex = [];
+    this.state.gridIndex = [];
     let count = 1;
-    for (
-      let i = 0;
-      i < this.state.puzzle.width * this.state.puzzle.height;
-      i++
-    ) {
+    for (let i = 0; i < this.state.width * this.state.height; i++) {
       if (
-        this.state.puzzle.cells[i]?.kind !== "block" &&
+        this.state.cells[i]?.kind !== "block" &&
         (blockAbove(i) || blockBehind(i))
       ) {
-        this.state.puzzle.gridIndex[count - 1] = i;
+        this.state.gridIndex[count - 1] = i;
         count++;
       }
     }
   };
+
+  buildHighlights = () => {
+    // no highlights if nothing is selected
+    if (typeof this.state.selected === "undefined") return;
+
+    const highlightForward = (newGridHighlights: number[]) => {
+      if (typeof this.state.selected === "undefined") return newGridHighlights;
+      let position = this.state.selected;
+      // continue moving forward until you hit the right edge or a block in front of you
+      while (this.state.cells[position]?.kind !== "block") {
+        newGridHighlights.push(position);
+        if ((position + 1) % this.state.width === 0) {
+          break;
+        }
+        position++;
+      }
+      return newGridHighlights;
+    };
+
+    const highlightBackward = (newGridHighlights: number[]) => {
+      if (typeof this.state.selected === "undefined") return newGridHighlights;
+      let position = this.state.selected;
+      // continue moving backward until you hit the left edge or a block in front of you
+      while (this.state.cells[position]?.kind !== "block") {
+        newGridHighlights.push(position);
+        if (
+          position - 1 < 0 ||
+          (position - 1) % this.state.width === this.state.width - 1
+        ) {
+          break;
+        }
+        position--;
+      }
+      return newGridHighlights;
+    };
+
+    const highlightUp = (newGridHighlights: number[]) => {
+      if (typeof this.state.selected === "undefined") return newGridHighlights;
+
+      let position = this.state.selected;
+      // continue moving up until you hit the top edge or a block in above you
+      while (this.state.cells[position]?.kind !== "block") {
+        newGridHighlights.push(position);
+        if (position - this.state.width < 0) {
+          break;
+        }
+        position -= this.state.width;
+      }
+      return newGridHighlights;
+    };
+
+    const highlightDown = (newGridHighlights: number[]) => {
+      if (typeof this.state.selected === "undefined") return newGridHighlights;
+
+      let position = this.state.selected;
+      // continue moving down until you hit the bottom edge or a block below you
+      while (this.state.cells[position]?.kind !== "block") {
+        newGridHighlights.push(position);
+        if (
+          position + this.state.width >=
+          this.state.width * this.state.height
+        ) {
+          break;
+        }
+        position += this.state.width;
+      }
+      return newGridHighlights;
+    };
+
+    const gridHighlights: number[] = [];
+    if (this.state.cells[this.state.selected]?.kind !== "block") {
+      if (this.state.selectedDirection === Direction.Across) {
+        highlightForward(gridHighlights);
+        highlightBackward(gridHighlights);
+      } else {
+        highlightUp(gridHighlights);
+        highlightDown(gridHighlights);
+      }
+    }
+    this.state.highlighted = gridHighlights;
+  };
 }
 
-// function debounce<T extends (...args: any[]) => any>(
-//   fn: T,
-//   delay: number,
-// ): (...args: Parameters<T>) => void {
-//   let timeout: ReturnType<typeof setTimeout> | undefined;
-
-//   return (...args: Parameters<T>) => {
-//     clearTimeout(timeout);
-//     timeout = setTimeout(() => fn(...args), delay);
-//   };
-// }
+function cancelable<T>(data: T) {
+  let prevented = false;
+  return {
+    ...data,
+    preventDefault() {
+      prevented = true;
+    },
+    get defaultPrevented() {
+      return prevented;
+    },
+  };
+}
