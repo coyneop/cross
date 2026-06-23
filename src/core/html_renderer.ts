@@ -116,7 +116,9 @@ export class HtmlRenderer implements Renderer {
                 position: "absolute",
                 top: "0",
                 left: "5%",
-                color: theme.textSecondary,
+                color: isSelected
+                  ? theme.selectTextSecondary
+                  : theme.textSecondary,
               },
             },
             gCount.toString(),
