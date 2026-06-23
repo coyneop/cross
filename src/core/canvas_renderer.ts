@@ -106,6 +106,18 @@ export class CanvasRenderer implements Renderer {
       }
     }
 
+    if (this.state.selected) {
+      const x = this.state.selected % state.width;
+      const y = Math.floor(this.state.selected / state.width);
+      this.ctx.fillStyle = theme.select;
+      this.ctx.fillRect(
+        ox + x * cellSize,
+        oy + y * cellSize,
+        cellSize,
+        cellSize,
+      );
+    }
+
     // draw numbers
     const numberPad = cellSize * 0.05;
     const numberSize = Math.max(8, Math.round(cellSize * 0.3));
@@ -118,7 +130,24 @@ export class CanvasRenderer implements Renderer {
       const y = Math.floor(pos / state.width);
       // Clue number
       this.ctx.fillText(
-        num.toString(),
+        (num + 1).toString(),
+        ox + x * cellSize + numberPad,
+        oy + y * cellSize + numberPad,
+      );
+    }
+
+    // Draw selected number
+    if (
+      state.selected &&
+      theme.selectTextSecondary &&
+      theme.selectTextSecondary !== theme.textSecondary &&
+      state.gridIndex.includes(state.selected)
+    ) {
+      this.ctx.fillStyle = theme.selectTextSecondary;
+      const x = state.selected % state.width;
+      const y = Math.floor(state.selected / state.width);
+      this.ctx.fillText(
+        (state.gridIndex.indexOf(state.selected) + 1).toString(),
         ox + x * cellSize + numberPad,
         oy + y * cellSize + numberPad,
       );
@@ -138,6 +167,25 @@ export class CanvasRenderer implements Renderer {
       const cx = ox + x * cellSize + cellSize / 2;
       const cy = oy + y * cellSize + cellSize;
       this.ctx.fillText(cell.value, cx, cy);
+    }
+
+    // draw selected letter
+    const selected = state.selected;
+    const selectedCell = selected ? state.cells[selected] : undefined;
+    if (
+      selected &&
+      selectedCell &&
+      theme.selectText &&
+      theme.selectText !== theme.text &&
+      selectedCell.kind === "value" &&
+      selectedCell.value
+    ) {
+      this.ctx.fillStyle = theme.selectText;
+      const x = selected % state.width;
+      const y = Math.floor(selected / state.width);
+      const cx = ox + x * cellSize + cellSize / 2;
+      const cy = oy + y * cellSize + cellSize;
+      this.ctx.fillText(selectedCell.value, cx, cy);
     }
 
     this.drawGrid(theme, cols, rows, cellSize, gridW, gridH, ox, oy);
