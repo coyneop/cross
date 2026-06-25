@@ -16,6 +16,36 @@ export const Direction = {
 } as const;
 
 export type Direction = (typeof Direction)[keyof typeof Direction];
+export const toggleDirection = (dir: Direction) =>
+  dir === Direction.Across ? Direction.Down : Direction.Across;
+
+export type Move = { direction: Direction; sign: -1 | 1 };
+
+export const ARROW_MOVES: Record<string, Move> = {
+  ArrowUp: { direction: Direction.Down, sign: -1 },
+  ArrowDown: { direction: Direction.Down, sign: 1 },
+  ArrowLeft: { direction: Direction.Across, sign: -1 },
+  ArrowRight: { direction: Direction.Across, sign: 1 },
+};
+
+export const row = (p: number, w: number) => Math.floor(p / w);
+export const col = (p: number, w: number) => p % w;
+export function step(
+  pos: number,
+  dir: Direction,
+  sign: -1 | 1,
+  width: number,
+  height: number,
+): number | null {
+  if (dir === Direction.Across) {
+    const nextCell = col(pos, width) + sign;
+    if (nextCell < 0 || nextCell >= width) return null;
+    return pos + sign;
+  }
+  const nextCell = row(pos, width) + sign;
+  if (nextCell < 0 || nextCell >= height) return null;
+  return pos + sign * width;
+}
 
 export function wordCells(
   cells: Cell[],
@@ -52,4 +82,21 @@ export function wordCells(
     i += step;
   }
   return highlighted;
+}
+
+export function gridIndex(
+  cells: Cell[],
+  width: number,
+  height: number,
+): number[] {
+  const indexes: number[] = [];
+  for (let i = 0; i < width * height; i++) {
+    if (cells[i]?.kind === "block") continue;
+    const above = step(i, Direction.Down, -1, width, height);
+    const before = step(i, Direction.Across, -1, width, height);
+    const startsDown = above === null || cells[above]?.kind === "block";
+    const startsAcross = before === null || cells[before]?.kind === "block";
+    if (startsDown || startsAcross) indexes.push(i);
+  }
+  return indexes;
 }

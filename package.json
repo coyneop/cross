@@ -45,7 +45,8 @@
   "scripts": {
     "build": "rm -rf dist && bun run build.ts",
     "test": "bun test",
-    "test:watch": "bun test --watch"
+    "test:watch": "bun test --watch",
+    "test:coverage": "bun test --coverage"
   },
   "sideEffects": false,
   "type": "module"

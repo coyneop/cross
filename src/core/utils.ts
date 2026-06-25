@@ -18,3 +18,16 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   node.append(...children);
   return node;
 }
+
+export function cancelable<T>(data: T) {
+  let prevented = false;
+  return {
+    ...data,
+    preventDefault() {
+      prevented = true;
+    },
+    get defaultPrevented() {
+      return prevented;
+    },
+  };
+}
