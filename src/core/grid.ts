@@ -30,6 +30,9 @@ export const ARROW_MOVES: Record<string, Move> = {
 
 export const row = (p: number, w: number) => Math.floor(p / w);
 export const col = (p: number, w: number) => p % w;
+export const rowcol = (p: number, w: number): { row: number; col: number } => {
+  return { row: Math.floor(p / w), col: p % w };
+};
 export function step(
   pos: number,
   dir: Direction,

@@ -1,4 +1,5 @@
 import type { Puzzle } from "./engine.ts";
+import { rowcol } from "./grid.ts";
 import type { Renderer } from "./renderer.ts";
 import { DEFAULT_LIGHT_THEME, type Theme } from "./theme.ts";
 import { el } from "./utils.ts";
@@ -106,6 +107,19 @@ export class CanvasRenderer implements Renderer {
       }
     }
 
+    //draw highlighted cells
+    this.state.highlighted?.forEach((cell: number) => {
+      const { row, col } = rowcol(cell, state.width);
+      this.ctx.fillStyle = theme.highlight;
+      this.ctx.fillRect(
+        ox + col * cellSize,
+        oy + row * cellSize,
+        cellSize,
+        cellSize,
+      );
+    });
+
+    // draw selected cell background
     if (this.state.selected) {
       const x = this.state.selected % state.width;
       const y = Math.floor(this.state.selected / state.width);
@@ -134,6 +148,26 @@ export class CanvasRenderer implements Renderer {
         ox + x * cellSize + numberPad,
         oy + y * cellSize + numberPad,
       );
+    }
+
+    // Draw highlight numbers
+    if (
+      state.selected &&
+      theme.highlightTextSecondary &&
+      theme.highlightTextSecondary !== theme.textSecondary
+    ) {
+      // Only redraw numbers that have highlights
+      this.state.highlighted
+        ?.filter((cell) => state.gridIndex.includes(cell))
+        .forEach((cell: number) => {
+          const { row, col } = rowcol(cell, state.width);
+          this.ctx.fillStyle = theme.highlightTextSecondary;
+          this.ctx.fillText(
+            (state.gridIndex.indexOf(cell) + 1).toString(),
+            ox + col * cellSize + numberPad,
+            oy + row * cellSize + numberPad,
+          );
+        });
     }
 
     // Draw selected number
@@ -167,6 +201,26 @@ export class CanvasRenderer implements Renderer {
       const cx = ox + x * cellSize + cellSize / 2;
       const cy = oy + y * cellSize + cellSize;
       this.ctx.fillText(cell.value, cx, cy);
+    }
+
+    // Draw highlighted letters
+    if (
+      state.selected &&
+      theme.highlightText &&
+      theme.highlightText !== theme.text
+    ) {
+      this.state.highlighted
+        ?.filter((pos) => state.cells[pos]?.kind === "value")
+        .forEach((pos: number) => {
+          const cell = state.cells[pos];
+          if (cell && cell.kind === "value" && cell.value !== "") {
+            this.ctx.fillStyle = theme.highlightText;
+            const { row, col } = rowcol(pos, state.width);
+            const cx = ox + col * cellSize + cellSize / 2;
+            const cy = oy + row * cellSize + cellSize;
+            this.ctx.fillText(cell.value, cx, cy);
+          }
+        });
     }
 
     // draw selected letter

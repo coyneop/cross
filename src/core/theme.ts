@@ -27,7 +27,7 @@ export const DEFAULT_LIGHT_THEME: Theme = {
   highlight: "#ddd",
   highlightBorder: "",
   highlightText: "#121212",
-  highlightTextSecondary: "999",
+  highlightTextSecondary: "#555",
   select: "#b1d7fb",
   selectBorder: "",
   selectText: "",
