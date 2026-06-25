@@ -44,9 +44,11 @@
   ],
   "scripts": {
     "build": "rm -rf dist && bun run build.ts",
+    "typecheck": "tsc --noEmit",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",
+    "check": "bun run typecheck && bun run test:coverage",
     "prepare": "git config core.hooksPath .githooks"
   },
   "sideEffects": false,

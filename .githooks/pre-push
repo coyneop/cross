@@ -1,11 +1,11 @@
 #!/usr/bin/env sh
-# Block the push if tests fail or line/function coverage is under the
-# threshold configured in bunfig.toml ([test].coverageThreshold).
-# Bypass in an emergency with: git push --no-verify
+# Block the push if type checking fails, tests fail, or line/function
+# coverage is under the threshold in bunfig.toml ([test].coverageThreshold).
+# Mirrors the CI workflow. Bypass in an emergency with: git push --no-verify
 
-echo "▶ pre-push: running tests + coverage threshold check…"
-if ! bun run test:coverage; then
-	echo "✗ Push aborted: tests failed or coverage is below the threshold."
+echo "▶ pre-push: type check + tests + coverage threshold…"
+if ! bun run check; then
+	echo "✗ Push aborted: type errors, test failures, or coverage below threshold."
 	echo "  (override with: git push --no-verify)"
 	exit 1
 fi
