@@ -25,6 +25,14 @@
     "./svelte": {
       "types": "./dist/svelte/Crossword.svelte.d.ts",
       "svelte": "./dist/svelte/Crossword.svelte"
+    },
+    "./component": {
+      "types": "./dist/component/index.d.ts",
+      "import": "./dist/component/index.js"
+    },
+    "./component/define": {
+      "types": "./dist/component/define.d.ts",
+      "import": "./dist/component/define.js"
     }
   },
   "peerDependencies": {
@@ -51,6 +59,8 @@
     "check": "bun run typecheck && bun run test:coverage",
     "prepare": "git config core.hooksPath .githooks"
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/component/define.js"
+  ],
   "type": "module"
 }

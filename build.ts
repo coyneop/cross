@@ -1,7 +1,12 @@
 import dts from "bun-plugin-dts";
 
 const result = await Bun.build({
-  entrypoints: ["./src/core/index.ts", "./src/react/index.ts"],
+  entrypoints: [
+    "./src/core/index.ts",
+    "./src/react/index.ts",
+    "./src/component/index.ts",
+    "./src/component/define.ts",
+  ],
   outdir: "./dist",
   root: "./src",
   packages: "external",
