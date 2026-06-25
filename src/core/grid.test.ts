@@ -1,8 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import {
   type Cell,
+  col,
   Direction,
   gridIndex,
+  row,
+  rowcol,
   toggleDirection,
   wordCells,
 } from "./grid";
@@ -159,5 +162,61 @@ describe("toggleDirection", () => {
   test("flips between across and down", () => {
     expect(toggleDirection(Direction.Across)).toBe(Direction.Down);
     expect(toggleDirection(Direction.Down)).toBe(Direction.Across);
+  });
+});
+
+describe("rowcol", () => {
+  test("returns row and column for a position", () => {
+    expect(rowcol(7, 5)).toEqual({ row: 1, col: 2 });
+  });
+
+  test("top-left is row 0, col 0", () => {
+    expect(rowcol(0, 5)).toEqual({ row: 0, col: 0 });
+  });
+});
+
+describe("row", () => {
+  // width 5
+  test("first cell is row 0", () => {
+    expect(row(0, 5)).toBe(0);
+  });
+
+  test("last cell of the first row is still row 0", () => {
+    expect(row(4, 5)).toBe(0);
+  });
+
+  test("first cell of the next row increments", () => {
+    expect(row(5, 5)).toBe(1);
+  });
+
+  test("a cell deeper in the grid", () => {
+    expect(row(12, 5)).toBe(2);
+  });
+
+  test("width 1 means every position is its own row", () => {
+    expect(row(7, 1)).toBe(7);
+  });
+});
+
+describe("col", () => {
+  // width 5
+  test("first cell is col 0", () => {
+    expect(col(0, 5)).toBe(0);
+  });
+
+  test("last cell of a row is the rightmost col", () => {
+    expect(col(4, 5)).toBe(4);
+  });
+
+  test("wraps back to col 0 on the next row", () => {
+    expect(col(5, 5)).toBe(0);
+  });
+
+  test("a cell mid-row", () => {
+    expect(col(7, 5)).toBe(2);
+  });
+
+  test("width 1 means every position is col 0", () => {
+    expect(col(3, 1)).toBe(0);
   });
 });
