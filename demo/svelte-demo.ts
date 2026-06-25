@@ -1,5 +1,6 @@
 import { mount, unmount } from "svelte";
-import { type Cell, RenderType } from "../src/core";
+import { RenderType } from "../src/core";
+import type { Cell } from "../src/core/grid";
 import Crossword from "../src/svelte/Crossword.svelte";
 
 const width = 15,

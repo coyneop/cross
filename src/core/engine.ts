@@ -1,19 +1,8 @@
 import { CanvasRenderer } from "./canvas_renderer";
+import { type Cell, Direction, wordCells } from "./grid";
 import { HtmlRenderer } from "./html_renderer";
 import type { Renderer } from "./renderer";
 import type { Theme } from "./theme";
-
-export type Cell =
-  | { kind: "block"; position: number }
-  | {
-      kind: "value";
-      position: number;
-      value: string;
-      solution?: string;
-      given?: boolean;
-      circle?: boolean;
-      shade?: string;
-    };
 
 export type Puzzle = {
   height: number;
@@ -25,22 +14,21 @@ export type Puzzle = {
   highlighted?: number[];
   theme?: Theme;
   mode?: PuzzleMode;
+  symmetric?: boolean;
 };
 
-export enum Direction {
-  Across = "across",
-  Down = "down",
-}
 export enum PuzzleMode {
   Solve = "solve",
   Build = "build",
 }
 
-export enum RenderType {
-  Html,
-  Svg,
-  Canvas,
-}
+export const RenderType = {
+  Html: "html",
+  Svg: "svg",
+  Canvas: "canvas",
+} as const;
+
+export type RenderType = (typeof RenderType)[keyof typeof RenderType];
 
 const DEFAULT_STATE = {
   height: 15,
@@ -53,9 +41,7 @@ const DEFAULT_STATE = {
 
 type EngineEvents = {
   select: { position: number; row: number; col: number };
-  navigate: { direction: "up" | "down" | "left" | "right" };
-  input: { key: string };
-  erase: { backward: boolean };
+  keydown: { letter: string; position: number; row: number; col: number };
 };
 
 type Handler<T> = (payload: T) => void;
@@ -79,7 +65,7 @@ class Emitter<E extends Record<string, unknown>> {
 export class Engine extends Emitter<EngineEvents> {
   element: HTMLElement;
   resizeObserver: ResizeObserver;
-  renderer!: Renderer;
+  renderer: Renderer;
   state: Puzzle;
   frameId: number | null = null;
 
@@ -137,6 +123,10 @@ export class Engine extends Emitter<EngineEvents> {
         return new HtmlRenderer(this.element);
       case RenderType.Svg:
         return new HtmlRenderer(this.element);
+      default: {
+        const _exhaustive: never = type;
+        throw new Error(`Unhandled render type: ${_exhaustive}`);
+      }
     }
   };
 
@@ -173,6 +163,42 @@ export class Engine extends Emitter<EngineEvents> {
     if (!ev.defaultPrevented) this.applySelection(position, direction);
   };
 
+  onLetter = (letter: string, position: number) => {
+    const ev = cancelable({
+      letter,
+      position: position,
+      row: Math.floor(position / this.state.width),
+      col: position % this.state.width,
+    });
+    this.emit("keydown", ev);
+    if (!ev.defaultPrevented) this.applyLetter(letter, position);
+    if (letter === "") {
+      if (
+        this.state.selectedDirection === Direction.Across &&
+        position % this.state.width > 0
+      ) {
+        this.onSelect(position - 1);
+      } else if (
+        this.state.selectedDirection === Direction.Down &&
+        position - this.state.width >= 0
+      ) {
+        this.onSelect(position - this.state.width);
+      }
+    } else {
+      if (
+        this.state.selectedDirection === Direction.Across &&
+        position % this.state.width !== this.state.width - 1
+      ) {
+        this.onSelect(position + 1);
+      } else if (
+        this.state.selectedDirection === Direction.Down &&
+        position + this.state.width <= this.state.width * this.state.height
+      ) {
+        this.onSelect(position + this.state.width);
+      }
+    }
+  };
+
   applySelection = (position: number, direction?: Direction) => {
     this.state.selected = position;
     this.state.selectedDirection = direction;
@@ -180,59 +206,61 @@ export class Engine extends Emitter<EngineEvents> {
     this.renderer.paint(this.state);
   };
 
+  applyLetter = (letter: string, position: number) => {
+    const cell = this.state.cells[position];
+    if (cell?.kind === "value") {
+      cell.value = letter;
+      this.renderer.paint(this.state);
+    }
+  };
+
   onKeyDown = (e: KeyboardEvent) => {
+    const position = this.state.selected;
+    if (position == null) return;
     switch (e.key) {
       case "ArrowUp":
         e.preventDefault();
-        if (typeof this.state.selected === "undefined") return;
         if (this.state.selectedDirection === Direction.Across) {
-          return this.onSelect(this.state.selected);
-        } else if (this.state.selected - this.state.width >= 0) {
-          return this.onSelect(this.state.selected - this.state.width);
+          return this.onSelect(position);
+        } else if (position - this.state.width >= 0) {
+          return this.onSelect(position - this.state.width);
         }
         return;
       case "ArrowDown":
         e.preventDefault();
-        if (typeof this.state.selected === "undefined") return;
         if (this.state.selectedDirection === Direction.Across) {
-          return this.onSelect(this.state.selected);
+          return this.onSelect(position);
         } else if (
-          this.state.selected + this.state.width <=
+          position + this.state.width <=
           this.state.width * this.state.height
         ) {
-          return this.onSelect(this.state.selected + this.state.width);
+          return this.onSelect(position + this.state.width);
         }
         return;
       case "ArrowLeft":
         e.preventDefault();
-        if (typeof this.state.selected === "undefined") return;
         if (this.state.selectedDirection === Direction.Down) {
-          this.onSelect(this.state.selected);
-        } else if (this.state.selected % this.state.width !== 0) {
-          this.onSelect(this.state.selected - 1);
+          this.onSelect(position);
+        } else if (position % this.state.width !== 0) {
+          this.onSelect(position - 1);
         }
         return;
       case "ArrowRight":
         e.preventDefault();
-        if (typeof this.state.selected === "undefined") return;
         if (this.state.selectedDirection === Direction.Down) {
-          this.onSelect(this.state.selected);
-        } else if (
-          this.state.selected % this.state.width !==
-          this.state.width - 1
-        ) {
-          this.onSelect(this.state.selected + 1);
+          this.onSelect(position);
+        } else if (position % this.state.width !== this.state.width - 1) {
+          this.onSelect(position + 1);
         }
         return;
       case "Backspace":
-        e.preventDefault();
-        return this.emit("erase", { backward: true });
       case "Delete":
         e.preventDefault();
-        return this.emit("erase", { backward: false });
+        return this.onLetter("", position);
     }
     if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
-      this.emit("input", { key: e.key });
+      e.preventDefault();
+      this.onLetter(e.key.toUpperCase(), position);
     }
   };
 
@@ -265,84 +293,17 @@ export class Engine extends Emitter<EngineEvents> {
   };
 
   buildHighlights = () => {
-    // no highlights if nothing is selected
-    if (typeof this.state.selected === "undefined") return;
-
-    const highlightForward = (newGridHighlights: number[]) => {
-      if (typeof this.state.selected === "undefined") return newGridHighlights;
-      let position = this.state.selected;
-      // continue moving forward until you hit the right edge or a block in front of you
-      while (this.state.cells[position]?.kind !== "block") {
-        newGridHighlights.push(position);
-        if ((position + 1) % this.state.width === 0) {
-          break;
-        }
-        position++;
-      }
-      return newGridHighlights;
-    };
-
-    const highlightBackward = (newGridHighlights: number[]) => {
-      if (typeof this.state.selected === "undefined") return newGridHighlights;
-      let position = this.state.selected;
-      // continue moving backward until you hit the left edge or a block in front of you
-      while (this.state.cells[position]?.kind !== "block") {
-        newGridHighlights.push(position);
-        if (
-          position - 1 < 0 ||
-          (position - 1) % this.state.width === this.state.width - 1
-        ) {
-          break;
-        }
-        position--;
-      }
-      return newGridHighlights;
-    };
-
-    const highlightUp = (newGridHighlights: number[]) => {
-      if (typeof this.state.selected === "undefined") return newGridHighlights;
-
-      let position = this.state.selected;
-      // continue moving up until you hit the top edge or a block in above you
-      while (this.state.cells[position]?.kind !== "block") {
-        newGridHighlights.push(position);
-        if (position - this.state.width < 0) {
-          break;
-        }
-        position -= this.state.width;
-      }
-      return newGridHighlights;
-    };
-
-    const highlightDown = (newGridHighlights: number[]) => {
-      if (typeof this.state.selected === "undefined") return newGridHighlights;
-
-      let position = this.state.selected;
-      // continue moving down until you hit the bottom edge or a block below you
-      while (this.state.cells[position]?.kind !== "block") {
-        newGridHighlights.push(position);
-        if (
-          position + this.state.width >=
-          this.state.width * this.state.height
-        ) {
-          break;
-        }
-        position += this.state.width;
-      }
-      return newGridHighlights;
-    };
-
-    const gridHighlights: number[] = [];
-    if (this.state.cells[this.state.selected]?.kind !== "block") {
-      if (this.state.selectedDirection === Direction.Across) {
-        highlightForward(gridHighlights);
-        highlightBackward(gridHighlights);
-      } else {
-        highlightUp(gridHighlights);
-        highlightDown(gridHighlights);
-      }
-    }
-    this.state.highlighted = gridHighlights;
+    const { selected, selectedDirection, width, height, cells } = this.state;
+    this.state.highlighted =
+      selected == null
+        ? []
+        : wordCells(
+            cells,
+            selected,
+            selectedDirection ?? Direction.Across,
+            width,
+            height,
+          );
   };
 }
 

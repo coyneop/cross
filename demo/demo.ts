@@ -1,9 +1,5 @@
-import {
-  type Cell,
-  Engine,
-  type Puzzle,
-  RenderType,
-} from "../src/core/index.ts";
+import type { Cell } from "../src/core/grid.ts";
+import { Engine, type Puzzle, RenderType } from "../src/core/index.ts";
 
 // 15×15 sample grid (every 4th square a block, just to see something)
 const width = 15,
@@ -19,8 +15,12 @@ const elem = document.getElementById("grid") as HTMLDivElement;
 
 const engine = new Engine(elem, puzzle);
 engine.on("select", console.log);
+engine.on("keydown", console.log);
 const renderers = [
-  { label: "HTML", type: RenderType.Html },
+  {
+    label: "HTML",
+    type: RenderType.Html,
+  },
   { label: "Canvas", type: RenderType.Canvas },
 ] as const;
 

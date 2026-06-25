@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
-import { type Cell, RenderType } from "../src/core";
+import { RenderType } from "../src/core";
+import type { Cell } from "../src/core/grid";
 import { Crossword } from "../src/react"; // import source, not dist, while developing
 
 const width = 15,
