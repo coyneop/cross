@@ -121,7 +121,7 @@ export class HtmlRenderer implements Renderer {
                   : theme.textSecondary,
               },
             },
-            gCount.toString(),
+            (gCount + 1).toString(),
           ),
           el(
             "span",
