@@ -103,3 +103,12 @@ export function gridIndex(
   }
   return indexes;
 }
+
+export function gridHash(cells: Cell[], width: number, height: number): string {
+  // anything that changes the static layer: dimensions + block positions
+  let key = `${width}x${height}`;
+  for (const [i, cell] of cells.entries()) {
+    if (cell.kind === "block") key += `,${i}`;
+  }
+  return key;
+}

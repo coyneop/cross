@@ -22,6 +22,7 @@ const renderers = [
     type: RenderType.Html,
   },
   { label: "Canvas", type: RenderType.Canvas },
+  { label: "SVG", type: RenderType.Svg },
 ] as const;
 
 let active: RenderType = RenderType.Html;

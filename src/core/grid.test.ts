@@ -3,9 +3,11 @@ import {
   type Cell,
   col,
   Direction,
+  gridHash,
   gridIndex,
   row,
   rowcol,
+  step,
   toggleDirection,
   wordCells,
 } from "./grid";
@@ -218,5 +220,83 @@ describe("col", () => {
 
   test("width 1 means every position is col 0", () => {
     expect(col(3, 1)).toBe(0);
+  });
+});
+
+describe("step", () => {
+  // width 5, height 4:
+  //   0  1  2  3  4
+  //   5  6  7  8  9
+  //  10 11 12 13 14
+  //  15 16 17 18 19
+  const W = 5;
+  const H = 4;
+
+  test("moves right and left within a row (across)", () => {
+    expect(step(6, Direction.Across, 1, W, H)).toBe(7);
+    expect(step(6, Direction.Across, -1, W, H)).toBe(5);
+  });
+
+  test("returns null at the row edges (across)", () => {
+    expect(step(9, Direction.Across, 1, W, H)).toBeNull(); // col 4, right edge
+    expect(step(5, Direction.Across, -1, W, H)).toBeNull(); // col 0, left edge
+  });
+
+  test("moves down and up within a column (down)", () => {
+    expect(step(6, Direction.Down, 1, W, H)).toBe(11);
+    expect(step(6, Direction.Down, -1, W, H)).toBe(1);
+  });
+
+  test("returns null at the column edges (down)", () => {
+    expect(step(2, Direction.Down, -1, W, H)).toBeNull(); // row 0, top edge
+    expect(step(17, Direction.Down, 1, W, H)).toBeNull(); // row 3, bottom edge
+  });
+
+  test("returns null stepping down from the first cell of the last row", () => {
+    // off-by-one guard: 15 is the first cell of the last row and must not
+    // wrap onto a nonexistent cell (the old `<= width*height` bug)
+    expect(step(15, Direction.Down, 1, W, H)).toBeNull();
+  });
+
+  test("uses height, not width, for the vertical bound", () => {
+    // non-square grid: down from row 2 lands in the valid last row (row 3)
+    expect(step(12, Direction.Down, 1, W, H)).toBe(17);
+  });
+});
+
+describe("gridHash", () => {
+  test("encodes dimensions for an open grid", () => {
+    const { cells, width, height } = grid(["ABC", "DEF", "GHI"]);
+    expect(gridHash(cells, width, height)).toBe("3x3");
+  });
+
+  test("includes block positions", () => {
+    // A B / C . / E F  -> block at index 3
+    const { cells, width, height } = grid(["AB", "C.", "EF"]);
+    expect(gridHash(cells, width, height)).toBe("2x3,3");
+  });
+
+  test("ignores letter values — only structure matters", () => {
+    const a = grid(["AB", "CD"]);
+    const b = grid(["XY", "ZW"]);
+    expect(gridHash(a.cells, a.width, a.height)).toBe(
+      gridHash(b.cells, b.width, b.height),
+    );
+  });
+
+  test("changes when a block moves", () => {
+    const a = grid([".B", "CD"]); // block at 0
+    const b = grid(["A.", "CD"]); // block at 1
+    expect(gridHash(a.cells, a.width, a.height)).not.toBe(
+      gridHash(b.cells, b.width, b.height),
+    );
+  });
+
+  test("changes when dimensions change", () => {
+    const a = grid(["AB"]); // 2x1
+    const b = grid(["A", "B"]); // 1x2
+    expect(gridHash(a.cells, a.width, a.height)).not.toBe(
+      gridHash(b.cells, b.width, b.height),
+    );
   });
 });

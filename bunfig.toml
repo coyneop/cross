@@ -2,6 +2,8 @@
 plugins = ["bun-plugin-svelte"]
 
 [test]
+# Register a global DOM before tests so DOM-touching code is testable.
+preload = ["./happydom.ts"]
 # Coverage is enabled per-run via `bun test --coverage` (see the test:coverage
 # script) so the default `bun test` stays fast.
 coverageReporter = ["text", "lcov"]

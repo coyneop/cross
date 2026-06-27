@@ -30,6 +30,7 @@ board.addEventListener("cross-keydown", (e) =>
 const renderers = [
   { label: "HTML", type: RenderType.Html },
   { label: "Canvas", type: RenderType.Canvas },
+  { label: "SVG", type: RenderType.Svg },
 ] as const;
 
 let active: RenderType = RenderType.Html;

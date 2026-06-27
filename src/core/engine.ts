@@ -12,6 +12,7 @@ import {
 } from "./grid";
 import { HtmlRenderer } from "./html_renderer";
 import type { Renderer } from "./renderer";
+import { SvgRenderer } from "./svg_renderer";
 import type { Theme } from "./theme";
 import { cancelable } from "./utils";
 
@@ -143,7 +144,7 @@ export class Engine extends Emitter<EngineEvents> {
       case RenderType.Html:
         return new HtmlRenderer(this.element);
       case RenderType.Svg:
-        return new HtmlRenderer(this.element);
+        return new SvgRenderer(this.element);
       default: {
         const _exhaustive: never = type;
         throw new Error(`Unhandled render type: ${_exhaustive}`);

@@ -19,6 +19,15 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
+export function svgEl<K extends keyof SVGElementTagNameMap>(
+  tag: K,
+  attrs: Record<string, string | number> = {},
+): SVGElementTagNameMap[K] {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+  return node;
+}
+
 export function cancelable<T>(data: T) {
   let prevented = false;
   return {
